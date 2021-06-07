@@ -1,29 +1,47 @@
 import numpy as np
 
-def scale_data_test(test_set, scaler):
-    # reshape test set
-    test_set = test_set.reshape(test_set.shape[0], test_set.shape[1])
-    test_set_scaled = scaler.transform(test_set)
+def scale_data_test(test, scaler):
+    """ Refactors data for testing
 
-    X_test, y_test = test_set_scaled[:, 1:], test_set_scaled[:, 0:1].ravel()
+    Args:
+    param test: Dataframe containing test data
+    param scaler: predicted scale
+    
+    Returns:
+    pred_test_inverted: Predetermination of treated tests
+    """
+    test = test.reshape(test.shape[0], test.shape[1])
+    test_scaled = scaler.transform(test)
+
+    X_test, y_test = test_scaled[:, 1:], test_scaled[:, 0:1].ravel()
     
     return X_test, y_test
 
 
-def undo_scaling(y_pred, x_test, scaler_obj, lstm=False):  
-    #reshape y_pred
-    y_pred = y_pred.reshape(y_pred.shape[0], 1, 1)
+def scaling(y, x, scaler, lstm=False):  
+    """ Responsible for handling and determining out-of-scale data
     
-    if not lstm:
-        x_test = x_test.reshape(x_test.shape[0], 1, x_test.shape[1])
+    Args:
+    param y: Dataframe with predictions
+    param x: Dataframe with test
+    param scaler: Scale data
+    param lstm: Flag that determines whether the data to be scaled is LSTM or not
+
+    Returns:
+    pred_test_inverted: Inverted test data predictions
+    """
+    y = y.reshape(y.shape[0], 1, 1)
     
-    pred_test_set = []
-    for index in range(0,len(y_pred)):
-        pred_test_set.append(np.concatenate([y_pred[index],x_test[index]],axis=1))
+    if lstm == False:
+        x = x.reshape(x.shape[0], 1, x.shape[1])
+    
+    pred_test = []
+    for index in range(0,len(y)):
+        pred_test.append(np.concatenate([y[index],x[index]],axis=1))
         
-    pred_test_set = np.array(pred_test_set)
-    pred_test_set = pred_test_set.reshape(pred_test_set.shape[0], pred_test_set.shape[2])
+    pred_test = np.array(pred_test)
+    pred_test = pred_test.reshape(pred_test.shape[0], pred_test.shape[2])
     
-    pred_test_set_inverted = scaler_obj.inverse_transform(pred_test_set)
+    pred_test_inverted = scaler.inverse_transform(pred_test)
     
-    return pred_test_set_inverted
+    return pred_test_inverted

@@ -1,0 +1,4 @@
+https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Grouper.html
+https://strftime.org/
+https://strftime.org/
+https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases

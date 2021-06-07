@@ -1,63 +1,66 @@
 import pandas as pd
 import numpy as np
-
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-
 import pickle
-
-from python_files.test import *
-from python_files.train import *
 
 model_scores = {}
 
-def predict_df(unscaled_predictions, original_df):
+def predict_data(unscaled_predictions, original_data, flag=True):
+    """ Data prediction based on out-of-scale predictions and the original data
+    Args:
+    param unscaled_predictions: unscaled predictions returned by scaling function
+    param original_data: original training data
+
+    Returns:
+    return: Dataframe with the sum of last year's sales and their monthly dates
+    """
     result_list = []
-    sales_dates = list(original_df[-13:].date)
-    act_sales = list(original_df[-13:].sales)
-    
-    for index in range(0,len(unscaled_predictions)):
+    dates = list(original_data[-12:].date) 
+    sales = list(original_data[-12:].sales)
+
+    for x in range(0,len(sales)):
         result_dict = {}
-        result_dict['pred_value'] = int(unscaled_predictions[index][0] + act_sales[index])
-        result_dict['date'] = sales_dates[index+1]
+        sum_predict = unscaled_predictions[x][0] + sales[x] if flag == True else unscaled_predictions[x] + sales[x]
+        result_dict['predict_value'] = int(sum_predict)
+        result_dict['date'] = dates[x]
         result_list.append(result_dict)
         
     df_result = pd.DataFrame(result_list)
-    
     return df_result
 
-def load_original_df():
-    original_df = pd.read_csv('data/train.csv')  
-    original_df.date = original_df.date.apply(lambda x: str(x)[:-3])
-    original_df = original_df.groupby('date')['sales'].sum().reset_index()
-    original_df.date = pd.to_datetime(original_df.date,errors='coerce')
-    return original_df
+def load_original():
+    """ Loads training data from train.csv
+    
+    Args: None
 
-def load_original_df():
-    original_df = pd.read_csv('data/train.csv')  
-    original_df.date = original_df.date.apply(lambda x: str(x)[:-3])
-    original_df = original_df.groupby('date')['sales'].sum().reset_index()
-    original_df.date = pd.to_datetime(original_df.date,errors='coerce')
-    return original_df
+    Return: Dataframe with data contained in data/train.csv
+    """
+    original = pd.read_csv('data/train.csv')  
+    original = original.drop(columns = ['store', 'item'])
+    original.date = pd.to_datetime(original.date, errors='coerce')
+    original = original.groupby(pd.Grouper(key='date', freq='1M',axis='index')).sum()
+    original = original.reset_index()
+    original.date = original.date.dt.strftime("%Y-%m-01")
+    original.date = pd.to_datetime(original.date, format='%Y-%m-%d', errors='coerce')
 
-def get_scores(unscaled_df, original_df, model_name):
-    rmse = np.sqrt(mean_squared_error(original_df.sales[-12:], unscaled_df.pred_value[-12:]))
-    mae = mean_absolute_error(original_df.sales[-12:], unscaled_df.pred_value[-12:])
-    r2 = r2_score(original_df.sales[-12:], unscaled_df.pred_value[-12:])
-    model_scores[model_name] = [rmse, mae, r2]
+    return original
 
-    print(f"RMSE: {rmse}")
-    print(f"MAE: {mae}")
-    print(f"R2 Score: {r2}")
+def plot_results(results, original_data, model_name):
+    """ Prints the results in graphical format
+    
+    Args:
+    param results: Dataframe with results data to be implemented
+    param original_data: Dataframe with original data
+    param model_name: Model to be implemented
 
-def plot_results(results, original_df, model_name):
-
+    Return: None
+    """
     fig, ax = plt.subplots(figsize=(15,5))
-    sns.lineplot(original_df.date, original_df.sales, data=original_df, ax=ax, 
+    sns.lineplot(original_data.date, original_data.sales, data=original_data, ax=ax, 
                  label='Original', color='mediumblue')
-    sns.lineplot(results.date, results.pred_value, data=results, ax=ax, 
+    sns.lineplot(results.date, results.predict_value, data=results, ax=ax, 
                  label='Predicted', color='Red')
     
     ax.set(xlabel = "Date",
@@ -69,41 +72,3 @@ def plot_results(results, original_df, model_name):
     sns.despine()
     
     plt.savefig(f'model_output/{model_name}_forecast.png')
-
-def run_model(train_data, test_data, model, model_name):
-    
-    X_train, y_train, scaler_object = scale_data_train(train_data)
-    X_test, y_test = scale_data_test(test_data, scaler_object)
-
-    mod = model
-    mod.fit(X_train, y_train)
-    predictions = mod.predict(X_test)
-    
-    # Undo scaling to compare predictions against original data
-    original_df = load_original_df()
-    unscaled = undo_scaling(predictions, X_test, scaler_object)
-    unscaled_df = predict_df(unscaled, original_df)
-      
-    get_scores(unscaled_df, original_df, model_name)
-    
-    plot_results(unscaled_df, original_df, model_name)
-
-def predict_df_predict(prediction_df):
-    original_df = pd.read_csv('data/train.csv')
-    original_df.date = original_df.date.apply(lambda x: str(x)[:-3])
-    original_df = original_df.groupby('date')['sales'].sum().reset_index()
-    original_df.date = pd.to_datetime(original_df.date,errors='coerce')
-    
-    result_list = []
-    sales_dates = list(original_df[-13:].date)
-    act_sales = list(original_df[-13:].sales)
-    
-    for index in range(0,len(prediction_df)):
-        result_dict = {}
-        result_dict['pred_value'] = int(prediction_df[index] + act_sales[index])
-        result_dict['date'] = sales_dates[index+1]
-        result_list.append(result_dict)
-        
-    df_result = pd.DataFrame(result_list)
-    
-    return df_result, original_df
